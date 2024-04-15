@@ -1,0 +1,17 @@
+{
+    "CONSOLIDATE_LABELS": true,
+    "CONSOLIDATE_OTHER": true,
+    "DATA_AUGMENTATION": false,
+    "TRAIN_SPLIT_PROP": 0.5,
+    "PRETRAINED_LM": "bert-large-uncased",
+    "LOGGING": false,
+    "MAX_LENGTH": 128,
+    "BATCH_SIZE": 128,
+    "NUM_EPOCHS": 20,
+    "LEARNING_RATE": 2e-05,
+    "DROPOUT": 0.3,
+    "BALANCE_FACTOR": 0.3,
+    "PATIENCE": 1,
+    "PREPROCESS_FOR_TUNING": true,
+    "PREPROCESS_ONLY_ONCE": false
+}

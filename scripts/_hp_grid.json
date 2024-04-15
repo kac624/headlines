@@ -1,0 +1,45 @@
+{
+    "CONSOLIDATE_LABELS": [
+        true
+    ],
+    "CONSOLIDATE_OTHER": [
+        true
+    ],
+    "DATA_AUGMENTATION": [
+        false
+    ],
+    "TRAIN_SPLIT_PROP": [
+        0.5
+    ],
+    "PRETRAINED_LM": [
+        "bert-base-uncased",
+        "bert-large-uncased"
+    ],
+    "LOGGING": [
+        false
+    ],
+    "MAX_LENGTH": [
+        64,
+        128
+    ],
+    "BATCH_SIZE": [
+        128
+    ],
+    "NUM_EPOCHS": [
+        20
+    ],
+    "LEARNING_RATE": [
+        2e-05
+    ],
+    "DROPOUT": [
+        0.3
+    ],
+    "BALANCE_FACTOR": [
+        0.3,
+        0.5,
+        0.7
+    ],
+    "PATIENCE": [
+        1
+    ]
+}

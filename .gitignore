@@ -1,0 +1,9 @@
+*_keys.json
+*.ipynb_checkpoints
+*.joblib
+*.pth
+*.pt
+*.tmp
+__pycache__/
+data/
+models/
