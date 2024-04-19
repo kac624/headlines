@@ -1,7 +1,12 @@
 {
-    "CONSOLIDATE_LABELS": true,
-    "CONSOLIDATE_OTHER": true,
-    "DATA_AUGMENTATION": false,
+    "CONSOLIDATE_LABELS": false,
+    "CONSOLIDATE_OTHER": false,
+    "DATA_AUGMENTATION": {
+        "PERCENTAGE": 0.4,
+        "BACKTRANSLATION": true,
+        "DELETION": true,
+        "REPLACEMENT": true
+    },
     "TRAIN_SPLIT_PROP": 0.5,
     "PRETRAINED_LM": "bert-base-uncased",
     "LOGGING": false,
