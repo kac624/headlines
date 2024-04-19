@@ -1,26 +1,38 @@
 {
     "CONSOLIDATE_LABELS": [
-        true
+        true,
+        false
     ],
     "CONSOLIDATE_OTHER": [
-        true
+        true,
+        false
     ],
     "DATA_AUGMENTATION": [
-        false
+        false,
+        {
+            "PERCENTAGE": 0.2,
+            "BACKTRANSLATION": true,
+            "DELETION": true,
+            "REPLACEMENT": true
+        },
+        {
+            "PERCENTAGE": 0.4,
+            "BACKTRANSLATION": true,
+            "DELETION": true,
+            "REPLACEMENT": true
+        }
     ],
     "TRAIN_SPLIT_PROP": [
         0.5
     ],
     "PRETRAINED_LM": [
-        "bert-base-uncased",
-        "bert-large-uncased"
+        "bert-base-uncased"
     ],
     "LOGGING": [
         false
     ],
     "MAX_LENGTH": [
-        64,
-        128
+        64
     ],
     "BATCH_SIZE": [
         128
@@ -35,11 +47,12 @@
         0.3
     ],
     "BALANCE_FACTOR": [
-        0.3,
-        0.5,
-        0.7
+        0.5
     ],
     "PATIENCE": [
         1
+    ],
+    "RANDOM_SEED": [
+        42
     ]
 }

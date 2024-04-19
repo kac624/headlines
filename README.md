@@ -1,4 +1,5 @@
 # headlines
+
 ### News headline classification using BERT
 
 This project aims to classify news articles into categories based on the subject-matter of the article. The primary model under consideration is the Bidirectional Encoder Representations from Transformers (BERT) model. The developer data consists of over 200,000 headlines for news articles, along with short descriptions of each article. The articles are all with HuffPost, published between 2012 and 2022. The target label is the news category (e.g. Business, Sports, Politics). The data was sourced from Kaggle.com [1].
@@ -8,6 +9,8 @@ Below is a description of the various scripts (all saved under the `scripts` fol
 ### preprocess.py
 
 This script loads in the dataset from Kaggle, splits it into training, validation and testing subsets, then processes text sequences for consumption by models. Specifically, the script generates vectorized representations of text sequences using (i) the Term Frequency-Inverse Document Frequency (TF-IDF) approach, primarily for use in the benchmark models; and (ii) tokenized sequences using the `BertTokenizer` from `transformers`. Labels are integer encoded, and a dictionary is saved (`code_labels_dict.json`) to aid in conversion between integer and natural language labels. All data is saved in `.pt` format under the `data` folder. The `_config.json` file allows for configuration of the training / test split ratio, the max length used by `BertTokenizer`, the consolidation of classes, and toggling of data augmentation.
+
+Note that this script uses the Kaggle API for Python, and requires that `kaggle.json` be saved to your PATH for authentication. See instructions here: https://python.plainenglish.io/how-to-use-the-kaggle-api-in-python-4d4c812c39c7.
 
 ### train_benchmarks.py
 

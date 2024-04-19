@@ -55,6 +55,9 @@ TRAIN_SPLIT_PROP = config['TRAIN_SPLIT_PROP']
 PRETRAINED_LM = config['PRETRAINED_LM']
 MAX_LENGTH = config['MAX_LENGTH']
 
+RANDOM_SEED = config['RANDOM_SEED']
+torch.manual_seed(RANDOM_SEED)
+
 
 
 """LOAD DATA, CONSOLIDATE AND SPLIT"""
@@ -101,8 +104,8 @@ news['label'] = news.category.astype('category').cat.codes
 news['text'] = news.headline + ' ' + news.short_description
 
 # Split
-train, valid = train_test_split(news, test_size=1 - TRAIN_SPLIT_PROP, stratify=news.category, random_state=42)
-valid, test = train_test_split(valid, test_size=0.5, stratify=valid.category, random_state=42)
+train, valid = train_test_split(news, test_size=1 - TRAIN_SPLIT_PROP, stratify=news.category, random_state=RANDOM_SEED)
+valid, test = train_test_split(valid, test_size=0.5, stratify=valid.category, random_state=RANDOM_SEED)
 
 print(f'Finished Split - Train: {len(train)}, Test: {len(test)}, Valid: {len(valid)}')
 

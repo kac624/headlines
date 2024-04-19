@@ -54,6 +54,9 @@ DROPOUT = config['DROPOUT']
 BALANCE_FACTOR = config['BALANCE_FACTOR']
 PATIENCE = config['PATIENCE']
 
+RANDOM_SEED = config['RANDOM_SEED']
+torch.manual_seed(RANDOM_SEED)
+
 
 
 """LOAD DATA"""
