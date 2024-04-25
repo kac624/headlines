@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import json
 import time
+import re
 
 # torch
 import torch
@@ -11,9 +12,9 @@ from torch.optim import AdamW
 
 # transformers
 import transformers
-from transformers import BertForSequenceClassification
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from transformers import get_linear_schedule_with_warmup
-transformers.logging.set_verbosity_error()
+from peft import get_peft_model, LoraConfig, TaskType
 
 # evaluation
 from sklearn.metrics import classification_report
@@ -21,6 +22,16 @@ from sklearn.metrics import classification_report
 # logging
 import os
 from datetime import datetime
+
+# warnings
+import warnings
+warnings.filterwarnings("ignore", message="Torch was not compiled with flash attention")
+transformers.logging.set_verbosity_error()
+
+
+# memory usage
+import pynvml
+pynvml.nvmlInit()
 
 
 
@@ -45,6 +56,9 @@ with open('scripts/_config.json', 'r') as file:
     config = json.load(file)
 
 PRETRAINED_LM = config['PRETRAINED_LM']
+LORA = config['LORA']
+LORA_RANK = config['LORA_RANK']
+LORA_TARGET_MODULES = config['LORA_TARGET_MODULES']
 LOGGING = config['LOGGING']
 MAX_LENGTH = config['MAX_LENGTH']
 BATCH_SIZE = config['BATCH_SIZE']
@@ -93,18 +107,41 @@ valid_dataloader = DataLoader(valid_dataset, sampler=valid_sampler, batch_size=B
 
 """INSTANTIATE MODEL"""
 
+# Get number of classes and vocab size
 output_size = len(code_labels_dict.keys())
-model = BertForSequenceClassification.from_pretrained(
-    PRETRAINED_LM, num_labels=output_size, output_attentions=False, output_hidden_states=False
-)
-model = model.cuda()
+tokenizer = AutoTokenizer.from_pretrained(PRETRAINED_LM)
+tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+tokenizer.padding_side = 'right'
 
-# Adjust dropout
-model.bert.embeddings.dropout.p = DROPOUT
-model.dropout.p = DROPOUT
-for layer in model.bert.encoder.layer:
-    layer.attention.self.dropout.p = DROPOUT
-    layer.output.dropout.p = DROPOUT
+# Instantiate model and set config
+model = AutoModelForSequenceClassification.from_pretrained(
+    PRETRAINED_LM, output_attentions=False, output_hidden_states=False, 
+    num_labels=output_size # , torch_dtype=torch.bfloat16
+)
+# Resize vocab and set padding token
+model.resize_token_embeddings(len(tokenizer))
+model.config.pad_token_id = tokenizer.pad_token_id
+# Resize if >10GB
+model_size_gb = model.num_parameters() * model.parameters().__next__().element_size() / (1024 ** 3)
+if model_size_gb > 10:
+    model = model.to(torch.bfloat16)
+# Set DROPOUT for bert-type models
+if 'bert' in PRETRAINED_LM:
+    model.bert.embeddings.dropout.p = DROPOUT
+    model.dropout.p = DROPOUT
+    for layer in model.bert.encoder.layer:
+        layer.attention.self.dropout.p = DROPOUT
+        layer.output.dropout.p = DROPOUT
+
+# Low Rank Adaptation
+if LORA:
+    peft_config = LoraConfig(
+        task_type=TaskType.SEQ_CLS, r=LORA_RANK,
+        lora_alpha=16, lora_dropout=DROPOUT, bias='none'
+    )
+    if LORA_TARGET_MODULES:
+        peft_config.target_modules = LORA_TARGET_MODULES
+    model = get_peft_model(model, peft_config)
 
 # Optimizer
 optimizer = AdamW(
@@ -122,6 +159,9 @@ scheduler = get_linear_schedule_with_warmup(
 
 """TRAINING"""
 
+# Move model to GPU
+model = model.to(device)
+
 # Set up variables
 train_loss_per_epoch = []
 val_loss_per_epoch = []
@@ -129,6 +169,9 @@ best_val_loss = float('inf')
 triggers = 0
 
 print('Training Loop Started...')
+h = pynvml.nvmlDeviceGetHandleByIndex(0)
+info = pynvml.nvmlDeviceGetMemoryInfo(h)
+print(f'GPU memory free %: {info.free * 100 / info.total:.2f}%')
 
 # Training Loop
 for epoch in range(NUM_EPOCHS):
@@ -147,8 +190,8 @@ for epoch in range(NUM_EPOCHS):
         # Calculate loss and log
         loss = output.loss
         train_loss += loss.item()
-        train_pred.append(np.argmax(output.logits.cpu().detach().numpy(), axis=-1))
-        train_actual.append(labels.cpu().detach().numpy())
+        train_pred.append(np.argmax(output.logits.to(dtype=torch.float32).cpu().detach().numpy(), axis=-1))
+        train_actual.append(labels.to(dtype=torch.float32).cpu().detach().numpy())
         # Calculate gradients and backpropagate
         model.zero_grad()
         loss.backward()
@@ -160,7 +203,6 @@ for epoch in range(NUM_EPOCHS):
     train_loss_per_epoch.append(train_loss / (step_num + 1))
     train_pred = np.concatenate(train_pred)
     train_actual = np.concatenate(train_actual)
-
 
     # Set to eval mode
     model.eval()
@@ -176,7 +218,7 @@ for epoch in range(NUM_EPOCHS):
             # Calculate loss and log
             loss = output.loss
             valid_loss += loss.item()
-            valid_pred.append(np.argmax(output.logits.cpu().detach().numpy(), axis=-1))
+            valid_pred.append(np.argmax(output.logits.to(dtype=torch.float32).cpu().detach().numpy(), axis=-1))
     # Calculate average loss for epoch
     val_loss_per_epoch.append(valid_loss / (step_num_e + 1))
     valid_pred = np.concatenate(valid_pred)
@@ -184,7 +226,7 @@ for epoch in range(NUM_EPOCHS):
     # Check for improvement
     if valid_loss < best_val_loss:
         best_val_loss = valid_loss
-        torch.save(model.state_dict(), 'models/bert_model.pt')
+        torch.save(model.state_dict(), f'models/{re.sub(r'[^\w\s.-]', '_', PRETRAINED_LM)}_{log_stamp}.pt')
         triggers = 0
     else:
         triggers += 1
@@ -208,6 +250,10 @@ for epoch in range(NUM_EPOCHS):
         f'\nValidation Loss: {val_loss_per_epoch[-1]:.4f}',
     )
 
+h = pynvml.nvmlDeviceGetHandleByIndex(0)
+info = pynvml.nvmlDeviceGetMemoryInfo(h)
+print(f'GPU memory free %: {info.free * 100 / info.total:.2f}%')
+
 """EVALUATE"""
 
 # Classification Reports 
@@ -215,7 +261,7 @@ train_class_report = classification_report(train_pred, train_actual, output_dict
 valid_class_report = classification_report(valid_pred, y_valid, output_dict=True, target_names=label_names, zero_division=0)
 
 # Create summary df
-summary = pd.DataFrame(config, index=[log_stamp]).transpose()
+summary = pd.DataFrame({k: str(v) for k, v in config.items()}, index=[log_stamp]).transpose()
 # Loop through classification reports to add to summary
 for report, name in zip([train_class_report, valid_class_report],['train', 'valid']):
     temp = pd.DataFrame({
@@ -235,10 +281,6 @@ summary = pd.concat([summary, pd.DataFrame(
 
 
 """LOG RESULTS"""
-
-# Save model if not already saved
-if not early_stop:
-    torch.save(model.state_dict(), 'models/bert_model.pt')
 
 if LOGGING:
     # Capture losses, predictions, and classification reports in dfs

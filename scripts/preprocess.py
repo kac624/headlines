@@ -13,20 +13,20 @@ api.authenticate()
 
 # sklearn
 from sklearn.model_selection import train_test_split
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 # transformers
 import transformers
-from transformers import BertTokenizer
+from transformers import AutoTokenizer
 
 # custom
-from utils import augment_dataset, random_delete, random_replace, back_translate, get_bert_inputs
+from utils import augment_dataset, random_delete, random_replace, back_translate
 from utils import consolidated_categories, performant_classes
 
 # warnings
 import warnings
 warnings.filterwarnings("ignore", message="TypedStorage is deprecated.*")
 warnings.filterwarnings("ignore", message=".*pip install sacremoses.*")
+warnings.filterwarnings("ignore", category=UserWarning, message=".*mkl-service package failed to import.*")
 transformers.logging.set_verbosity_error()
 
 
@@ -146,6 +146,8 @@ print(f'Finished Labels - Train: {len(y_train)}, Test: {len(y_test)}, Valid: {le
 
 """TF-IDF"""
 
+from sklearn.feature_extraction.text import TfidfVectorizer
+
 tfidf = TfidfVectorizer(min_df=3, stop_words='english', max_features=5000, ngram_range=(1, 3))
 
 tfidf_train = tfidf.fit_transform(train.text)
@@ -161,16 +163,29 @@ print(f'Finished TF-IDF - Train: {tfidf_train.shape}, Test: {tfidf_test.shape}, 
 
 
 
-"""BERT - TOKENIZE"""
+"""LLM - TOKENIZE"""
 
 transformers.logging.set_verbosity_error()
-tokenizer = BertTokenizer.from_pretrained(PRETRAINED_LM, do_lower_case=True)
+tokenizer = AutoTokenizer.from_pretrained(PRETRAINED_LM)
+tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+tokenizer.padding_side = 'right'
+if 'bert' in PRETRAINED_LM.lower():
+    tokenizer.do_lower_case = True
 
-train_input_ids, train_att_masks = get_bert_inputs(tokenizer, train['text'].values.tolist(), MAX_LENGTH)
-valid_input_ids, valid_att_masks = get_bert_inputs(tokenizer, valid['text'].values.tolist(), MAX_LENGTH)
-test_input_ids, test_att_masks = get_bert_inputs(tokenizer, test['text'].values.tolist(), MAX_LENGTH)
+train_inputs = tokenizer(train['text'].values.tolist(), return_tensors='pt', padding='max_length', max_length=MAX_LENGTH, truncation=True)
+valid_inputs = tokenizer(valid['text'].values.tolist(), return_tensors='pt', padding='max_length', max_length=MAX_LENGTH, truncation=True)
+test_inputs = tokenizer(test['text'].values.tolist(), return_tensors='pt', padding='max_length', max_length=MAX_LENGTH, truncation=True)
 
-print(f'Finished BERT Data - Train: {train_input_ids.shape}, Test: {valid_input_ids.shape}, Valid: {test_input_ids.shape}')
+train_input_ids = train_inputs['input_ids']
+train_att_masks = train_inputs['attention_mask']
+
+valid_input_ids = valid_inputs['input_ids']
+valid_att_masks = valid_inputs['attention_mask']
+
+test_input_ids = test_inputs['input_ids']
+test_att_masks = test_inputs['attention_mask']
+
+print(f'Finished LLM Data - Train: {train_input_ids.shape}, Test: {valid_input_ids.shape}, Valid: {test_input_ids.shape}')
 
 
 
@@ -199,4 +214,4 @@ torch.save(test_att_masks, 'data/test_att_masks.pt')
 
 """END"""
 
-print(f'\nPreprocessing Script Complete - Time Elapsed - {(time.time()-start) / 60:.2f} minutes')
+print(f'Preprocessing Script Complete - Time Elapsed - {(time.time()-start) / 60:.2f} minutes\n')

@@ -4,9 +4,9 @@ from itertools import chain
 
 # import transformers
 # transformers.logging.set_verbosity_error()
-from transformers import pipeline
+from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
 
-import nltk
+# import nltk
 # nltk.download('wordnet')
 from nltk.corpus import wordnet
 

@@ -56,7 +56,7 @@ for counter, values in enumerate(hp_combos):
     
     # Run training
     print('----Train----')
-    output = subprocess.run(['python', 'scripts/train_bert.py'], capture_output=True, text=True)
+    output = subprocess.run(['python', 'scripts/train_llm.py'], capture_output=True, text=True)
     print(output.stdout)
 
     # Append results
