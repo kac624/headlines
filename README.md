@@ -7,10 +7,10 @@ This project aims to classify news articles into categories based on the subject
 Below is a description of the various scripts (all saved under the `scripts` folder). Configuration is handled via the `_config.json` and `_hp_grid.json` files. The `overview.ipynb` provides an end-to-end view of the development procedure, covering exploratory data analysis, benchmark and baseline training, tuning for performance, and final evaluation.
 
 APRIL 2024 UPDATE: I've adjusted the code to allow for usage of other pre-trained with the `PRETRAINED_LM` parameter. Models compared for performance include:  
--`bert-base-uncased`
--`roberta-base`
--`meta-llama/meta-llama-3-8b`
--TBD
+-`bert-base-uncased`  
+-`roberta-base`  
+-`meta-llama/meta-llama-3-8b`  
+-TBD  
 
 ### preprocess.py
 
